@@ -424,3 +424,170 @@ func main() {
 ```
 
 ## Go语言范围(Range)
+
+Go语言中range关键字用于for循环中迭代数组，切片、通道或集合的元素，在数据和切片中它返回元素的索引值，在集合中返回key-value对的key值
+
+```
+func main() {
+	nums := [] int{2, 3, 4}
+	sum := 0
+	for _, num := range nums {
+		sum += num
+	}
+	fmt.Println("sum:", sum)
+
+	// 在数组上使用range将传入index和值两个变量。上面那个例子我们不需要使用该元素的序号，所以我们使用空白符"_"省略了。有时侯我们确实需要知道它的索引。
+
+	for i, num := range nums {
+		if num == 3 {
+			fmt.Println("index: ", i)
+		}
+	}
+	
+	// range也可以用在map的键值对
+	kvs := map[string]string{"a": "apple", "b": "banana"}
+
+	for k, v := range kvs {
+		fmt.Printf("%s -> %s\n", k, v)
+	}
+}
+```
+
+## Go语言Map(集合)
+
+Map 是一种无序的键值对的集合，Map最重要的一点是通过key来快速检索数据，key类似于索引，指向数据的值
+
+Map是一种集合，我们可以像迭代数组合切片那样迭代它，但是Map是无序的
+
+**定义Map**
+
+可以使用内建函数make也可以使用map关键字来定义Map
+
+```
+// 声明变量，默认map是nil
+var map_variable map[key_data_type]value_data_type
+
+// 使用make函数
+map_varibale := male(map[key_data_type]value_data)type
+
+```
+如果不初始化map，那么就会创建一个nil map nil map不能用来存放键值对
+
+**delele()函数**
+
+delete函数用于删除集合的元素 参数为map和其对应的key
+
+
+```
+func main() {
+	countryCapitalMap := map[string] string {"France": "Paris", "Italy": "Rome"}
+	fmt.Println("原始map")
+	
+	for country := range countryCapitalMap {
+		fmt.Println("Capital of", country, "is", countryCapitalMap[country])
+	}
+
+	delete(countryCapitalMap, "France")
+
+	fmt.Println("Entry for France is deleted")  
+   
+    fmt.Println("删除元素后 map")
+
+	for country := range countryCapitalMap {
+		fmt.Println("Capital of",country,"is",countryCapitalMap[country])
+	}
+}
+```
+
+## Go语言递归函数
+
+```
+func recursion() {
+    recursion()
+}
+
+func main() {
+    recursion()
+}
+```
+
+## Go语言类型转换
+
+类型转换用于将一种数据类型的变量转换为另一种类型的变量
+
+`type_name(expression)`
+
+type_name为类型 expression为表达式
+
+## Go语言借口
+
+Go语言提供了另外一种数据类型级接口，它把所有的具有共性的方法定义在一起，任何其他类型只要实现了这些方法就实现了这个接口
+
+```
+// 定义接口
+type interface_name interface {
+    method_name1 [return_type]
+    method_name2 [return_type]
+    // ...
+    method_namen [return_type]
+}
+// 定义结构体
+type struct_name struct {
+    // variables
+}
+// 实现接口方法
+func (struct_name_variable struct_name) method_name1() [return_type] {
+    // 方法实现
+}
+// ...
+func (struct_name_variable struct_name) method_namen() [return_type] {
+    // 方法实现
+}
+```
+
+**接口**
+
+接口泛指实体把自己提供给外界的一种抽象化物（可以为另一实体)，用以由内部操作分离出外部沟通方法，使其能被修改内部而不影响外界其他实体与其交互的方式
+
+```
+type Phone interface {
+	call()
+}
+
+type NokiaPhone struct {
+	
+}
+
+func (nokiaPhone NokiaPhone) call() {
+	fmt.Println("I am Nokia, I can call you!")
+}
+
+type IPhone struct {
+
+}
+
+func (iphone IPhone) call() {
+	fmt.Println("I am IPhone, I can call you!")
+}
+
+func main() {
+	var phone Phone
+
+	phone = new(NokiaPhone)
+	phone.call()
+
+	phone = new(IPhone)
+	phone.call()
+}
+```
+
+## Go错误处理
+
+Go语言通过内置的错误接口提供了简单的错误处理机制
+error类型是一个接口类型
+
+```
+type error interface {
+    Error() string
+}
+```
