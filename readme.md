@@ -274,5 +274,153 @@ nil指针也被称为空指针， nil都指代零值或空值
 
 ## Go语言结构体
 
+Go语言中数组可以存储同一类型的数据，但在结构体中我们可以为不同项定义不同的数据类型
+
+**定义结构体**
+
+结构体定义需要使用type和struct语句，struct语句定义了一个新的数据类型，结构体中有一个或多个成员
+
+```
+type struct_variable_type struct {
+    memeber definition;
+    memeber definition;
+    ...
+    memeber definition;
+}
+```
+
+一旦定义了结构体类型，他就能用于变量的声明，语法格式如下
+
+`variable_name := structire_variable_type {value1, value2...valuen}`
+
+```
+type Books struct {
+	title string
+	author string
+	subject string
+	book_id string
+}
+```
+
+**结构体作为函数参数**
+
+```
+func printBook(book Books) {
+	fmt.Printf( "Book title : %s\n", book.title);
+   	fmt.Printf( "Book author : %s\n", book.author);
+   	fmt.Printf( "Book subject : %s\n", book.subject);
+   	fmt.Printf( "Book book_id : %d\n", book.book_id);
+}
+```
+
+**结构体指针**
+
+可以定义指向结构体的指针类似于其他指针变量
+
+`var struct_pointer *Books`
+
+`struct_pointer = &Book1`
+
+## Go语言切片(Slice)
+
+Go语言切片是对数组的抽象
+
+Go数组的长度不可改变，在特定场景中这样的集合就不太实用，Go中提供了一种灵活，功能强悍的内置类型切片（"动态数组")，与数组相比切片的长度是不固定的，可以追加元素，在追加时可能使切片的容量增大
+
+`var identifier []type`
+
+切片不需要说明长度，或者使用`make()`函数来创建切片
+
+```
+var slice1 []type = make([]type, len)
+
+// or
+
+slice1 := make([]type, len)
+
+// 也可以指定容量
+make([]T, length, capacity)
+```
+
+**len()和cap()函数**
+
+切片是可索引的，并且可以由 len() 方法获取长度。
+切片提供了计算容量的方法 cap() 可以测量切片最长可以达到多少。
+
+```
+package main
+
+import "fmt"
+
+func main() {
+   var numbers = make([]int,3,5)
+
+   printSlice(numbers)
+}
+
+func printSlice(x []int){
+   fmt.Printf("len=%d cap=%d slice=%v\n",len(x),cap(x),x)
+}
+```
+
+**nil切片**
+
+```
+func main() {
+	var numbers []int
+	printSlice(numbers)
+
+	if(numbers == nil) {
+		fmt.Printf("切片是空的")
+	}
+}
+
+func printSlice(x []int) {
+	fmt.Printf("len=%d cap=%d slice=%v\n",len(x),cap(x),x)
+}
+```
+
+**切片截取**
+
+可以通过设置下限及上限来设置截取切片
+
+```
+func main() {
+	numbers := [] int{0, 1, 2, 3, 4, 5, 6, 7, 8}
+	printSlice(numbers)
+	fmt.Println("numbers==", numbers)
+	fmt.Println("numbers[1:4]==", numbers[1:4])
+	fmt.Println("numbers[1:3]==", numbers[:3])
+	fmt.Println("numbers[3:]==", numbers[3:])
+	numbers_1 := numbers[1:4]
+	printSlice(numbers_1)
+}
+```
+
+**append()和copy()函数**
+
+如果想增加切片的容量，我们必须创建一个新的更大的切片把原分片的内容都拷贝过来
 
 
+```
+func main() {
+	var numbers []int
+	printSlice(numbers)
+
+	numbers = append(numbers, 0)
+	printSlice(numbers)
+
+	numbers = append(numbers, 1)
+	printSlice(numbers)
+
+	numbers = append(numbers, 2, 3, 4)
+	printSlice(numbers)
+
+	numbers_1 := make([] int, len(numbers), cap(numbers) * 2)
+
+	copy(numbers_1, numbers)
+	printSlice(numbers_1)
+}
+```
+
+## Go语言范围(Range)
