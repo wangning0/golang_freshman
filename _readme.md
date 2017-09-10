@@ -381,27 +381,130 @@ Go语言中有几种方法可以创建和初始化切片，是否能提前知道
             fmt.Printf("index: %d, value: %d\n", k, v)
         }
         ```
-* 多维切片
+    * 多维切片
 
-    ```
-    // 声明
-    slice := [][]int{{10}, {100, 200}}
+        ```
+        // 声明
+        slice := [][]int{{10}, {100, 200}}
 
-    slice[0] = append(slice[0], 300)
-    ```
-* 在函数间传递切片
+        slice[0] = append(slice[0], 300)
+        ```
+    * 在函数间传递切片
 
-    在函数间传递切片就是要在函数间以值的方式传递切片，由于切片的尺寸很小，在函数间复制和传递切片的成本也很低
+        在函数间传递切片就是要在函数间以值的方式传递切片，由于切片的尺寸很小，在函数间复制和传递切片的成本也很低
 
-    ```
-    slice := make([]int, 1e6)
-    slice = foo(slice)
+        ```
+        slice := make([]int, 1e6)
+        slice = foo(slice)
 
-    func foo(slice []int) [] int {
-        return slice
-    }
+        func foo(slice []int) [] int {
+            return slice
+        }
+
+        ```
+
+* Map的内部实现和基础功能
+
+    Map是一种数据结构，用于存储一系列无序的键值对
     
-    ```
+    * 内部实现
+
+        Map是一个集合，可以使用类似处理数组和切片的方式迭代Map中的缘故，但是Map没有办法预测键值对被返回的顺序，无序的原因时Map的实现使用了散列表
+
+        Map的散列表包含一组桶，每次存储和查找键值对的时候，都要先选择一个桶。如何选择一个桶呢？就是把指定的键传给散列函数，就可以索引到相应的桶了，进而找到对应的键值
+
+        这种方式的好处是，存储的数据越多，索引分布越均匀，所以我们访问键值对的速度也就越快
+
+        **Map存储的是无序键值对的集合**
+
+    * 创建和初始化
+
+        ```
+        // 使用make声明Map
+        dict := make(map[string]int)
+
+        // 声明并初始化
+        dict := map[string]string{"Red": "red"}
+
+        ```
+
+        Map的值可以是任何值，可以是内置的类型也可以是结构类型，**切片、函数以及包含切片的结构类型**由于具有引用语义，所以不能作为key
+
+        ```
+        dict := map[[] string]int{} 
+        // Compiler Expection
+        ```
+
+        ```
+        // 声明一个存储字符串切片的Map
+        dict := map[int][] string {}
+        ```
+    * 使用Map
+
+        Map的使用和数组切片差不多，Map是通过键
+
+        ```
+        dict := make(map[string]int)
+        dict["red"] = 1
+        ```
+
+        可以通过声明一个未初始化的映射来创建一个值为nil的Map，nil Map不能用于存储键值对。否则，或产生一个语言运行时错误
+
+        ```
+        var dict map[string]int
+        dict["red"] = 1
+        // panic: assignment to entry in nil map
+        ```
+
+        在Go Map中，我们如果获取一个不存在的值的值，也可以，返回的是值类型的零值，那么在Go中，如何判断一个键值对是否存在呢？
+
+        ```
+        // 从映射获取值并判断值是否存在
+        value, exists := colors["Blue"]
+        ```
         
+        如何迭代Map，也可以使用range
 
+        ```
+        people := map[string]int{
+            "wn":  21,
+            "csr": 20,
+        }
 
+        for key, value := range people {
+            fmt.Printf("name: %s, age: %d\n", key, value)
+        }
+        ```
+        
+        删除Map中的一项通过delete即可
+
+        ``
+        delete(people, "wn")
+        ```
+
+    * 在函数间传递Map
+
+        在函数间传递并不会制造出该Map的一个副本，实际上，当传递Map给一个函数，并对这个Map做了修改时，所有对这个Map的引用都会察觉到这个修改
+
+        ```
+        func main() {
+            people := map[string]int{
+                "wn":  21,
+                "csr": 20,
+            }
+
+            for key, value := range people {
+                fmt.Printf("name: %s, age: %d\n", key, value)
+            }
+            removePeople(people, "wn")
+            for key, value := range people {
+                fmt.Printf("name: %s, age: %d\n", key, value)
+            }
+        }
+
+        func removePeople(people map[string]int, key string) {
+            delete(people, key)
+        }
+        ```
+
+## Go语言的类型系统

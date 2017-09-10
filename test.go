@@ -3,8 +3,20 @@ package main
 import "fmt"
 
 func main() {
-	slice := []int{1, 2, 3, 4, 5}
-	for k, v := range slice {
-		fmt.Printf("index: %d, value: %d\n", k, v)
+	people := map[string]int{
+		"wn":  21,
+		"csr": 20,
 	}
+
+	for key, value := range people {
+		fmt.Printf("name: %s, age: %d\n", key, value)
+	}
+	removePeople(people, "wn")
+	for key, value := range people {
+		fmt.Printf("name: %s, age: %d\n", key, value)
+	}
+}
+
+func removePeople(people map[string]int, key string) {
+	delete(people, key)
 }
