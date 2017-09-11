@@ -508,3 +508,94 @@ Go语言中有几种方法可以创建和初始化切片，是否能提前知道
         ```
 
 ## Go语言的类型系统
+
+Go语言是一种静态类型的编程语言，这意味着，编译器需要在编译时知晓程序里每个值的类型，提前知道类型信息，编译器就可以确保程序合理的使用值。有利于减少潜在的内存异常和bug，并且使编译器有机会对代码进行一些性能优化，提高执行效率
+
+值的类型给编译器提供两部分信息
+
+* 需要分配多少内存给这个值，即值的规模
+* 这段内存表示什么
+
+比如，int64类型的值需要8字节，表示一个整数值
+
+### 用户定义的类型
+
+Go语言里声明用户定义的类型有两种方法，最常用的方法是使用关键字struct，它可以让用户创建一个结构类型
+
+```
+// user在程序里定义一个用户类型
+type user struct {
+    name string
+    eamill string
+    ext int
+    privileged bool
+}
+
+// 使用结构类型声明变量，并初始化为其
+var bill user
+```
+
+任何时候，创建一个变量并初始化为其零值，习惯使用关键字var，这种做法是为了更明确的表示一个变量被设置为零值，如果变量被初始化为某个非零值
+
+```
+lisa := user {
+    name: "lisa",
+    eamil: "lisa@email.com",
+    ext: 123,
+    privileged: true, // 最后的逗号是必须的
+}
+// 或者是下面的写法， 顺序很重要
+lisa := user{"lisa", "lisa@email.com", 123, false} // 没有逗号
+```
+
+在声明结构类型时，字段的类型并不限制在内置类型，也可以使用其他用户定义的类型
+
+```
+type admin struct {
+    person user
+    level string
+}
+```
+
+对应的初始化
+
+```
+fred := admin{
+    person: user {
+        name: "fred",
+        eamil: "fred@email.com",
+        ext: 123,
+        privileged: true, // 最后的逗号是必须的
+    },
+    level: "super",
+}
+```
+
+**另一种声明用户定义的类型的方法是，基于一个已有的类型，将其作为新类型的类型说明**当需要一个可以用已有类型表示的新类型的时候，这种方法会非常好用
+
+`type Duration int64`
+
+我们在使用time这个包的时候，对于类型time.Duration应该非常熟悉，它其实就是基于int64 这个基本类型创建的新类型，来表示时间的间隔
+
+但是这里我们注意，虽然Duration是基于int64创建，觉得他们其实一样，比如都可以使用数字赋值
+
+```
+type Duration int64
+
+var dur Duration
+dur=int64(100)
+fmt.Println(dur)
+```
+
+会在编译的时候报错
+
+```
+./test.go:9:6: cannot use int64(100) (type int64) as type Duration i
+n assignment
+```
+
+**两种不同类型的值即便互相兼容，也不能互相赋值。**编译器不会对不同类型的值做隐士转换。
+
+### 方法
+
+方法能给用户定义的类型添加新的行为
