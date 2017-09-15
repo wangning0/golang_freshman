@@ -598,4 +598,339 @@ n assignment
 
 ### 方法
 
-方法能给用户定义的类型添加新的行为
+方法能给用户定义的类型添加新的行为，方法其实也是函数，只是在声明时，在关键字func和方法名之间增加了一个参数
+
+```
+type user struct {
+	name string
+	email string
+}
+
+func (u user) notify() {
+	fmt.Printf("Sending User Email To %s<%s>\n", u.name, u.email)
+}
+
+func (u *user) changeEmail(email string) {
+	u.email = email
+}
+
+func main() {
+	// user类型的值可以用来调用
+	bill := user{"Bill", "bill@email.com"}
+	bill.notify()
+
+	// 指向user类型值的指针也可以用来调用
+	lisa := &user{"Lisa", "lisa@email.com"}
+	lisa.notify()
+    // 本质是（*lisa).notify()
+    // notify操作的还是一个副本，只不过这一次操作的是从lisa指针指向的值的副本
+
+	bill.changeEmail("bill@newemail.com")
+	bill.notify()
+
+	lisa.changeEmail("lisa@newemail.com")
+	lisa.notify()
+}
+```
+
+如果一个函数有接收者，这个函数就被称为方法
+
+Go语言里有两种类型的接收者：**值接收者和指针接收者**
+
+使用值接收者声明方法，调用时会使用这个值的一个副本来执行
+
+当使用指针接收者声明的方法时，这个方法会共享调用方法时接收者所指向的值
+
+总结来看：值接收者使用值的副本来调用方法，而指针接收者使用实际值来调用方法
+
+### 类型的本质
+
+* 内置类型
+
+    内置类型是语言提供的一组类型，分别是**数值类型、字符串类型和布尔类型**，这些类型本质上是原始的类型。因此，对这些值进行增加或者删除的时候，会创建一个新值，当把这些类型的值传递给方法或者函数时，应该传递一个对应值的副本
+
+* 引用类型
+
+    Go语言里的引用类型有如下几个：**切片、映射、通道、接口和函数类型**，当声明上述类型的变量时，创建的变量被称为**标头(header)值**，每个引用类型创建的header都是一个指向底层数据结构的指针，每个引用类型还包含一组独特的字段，用于管理底层数据结构
+
+* 结构类型
+
+    结构类型可以用来描述一组数据值，这组值的本质即可以是原始的，也可以是非原始的
+
+    如果结构体的本质是原始的，那么可以使用值接收者的方法。如果结构体的本质是非原始的，那么可以使用指针来共享这个值
+    
+    **使用值接收者还是指针接收者，这个决策应该基于该类型的本质**
+
+## 接口
+
+多态是指代码可以根据类型的具体实现采取不同行为的能力。
+
+如果一个类型实现了某个接口，所有使用这个接口的地方，都可以支持这种类型的值。
+
+* 方法集
+
+在这个地方要注意**方法集**的概念
+
+```
+Methods Receivers     Values
+----------------------------
+（t T)                 T adn *T
+ (t *T)                 *T
+```
+
+因为不是总能获取一个值的地址，所以值的方法集只包括了使用值接收者实现的方法
+
+* 多态
+
+```
+package main
+
+import "fmt"
+
+type notifier interface {
+	notify()
+}
+
+type user struct {
+	name string
+	email string
+}
+
+func (u *user) notify() {
+	fmt.Printf("Sending user emial to %s<%s>\n", u.name, u.email)
+}
+
+type admin struct {
+	name string
+	email string
+}
+
+func (a *admin) notify() {
+	fmt.Printf("I'm admin, %s<%s>\n", a.name, a.email)
+}
+
+func main() {
+	bill := user{"Bill", "bill@email.com"}
+	sendNotification(&bill)
+
+	lisa := admin{"Lisa", "lisa@email.com"}
+	sendNotification(&lisa)
+}
+
+func sendNotification(n notifier) {
+	n.notify()
+}
+```
+
+* 嵌入类型
+
+Go语言允许用户拓展或者修改已有类型的行为，对代码复用和修改已有类型以符合新类型的时候也很重要，这个功能是通过**嵌入类型**来实现的，嵌入类型将已有的类型直接声明在新的结构类型里，被嵌入的类型被称为新的外部类型的内部类型
+
+嵌入类型的使用
+
+```
+package main
+
+import "fmt"
+
+type user struct {
+	name string
+	email string
+}
+
+func (u *user) notify() {
+	fmt.Printf("Sending user emial to %s<%s>\n", u.name, u.email)
+}
+
+type admin struct {
+	user
+	level string
+}
+
+func main() {
+	ad := admin{
+		user: user{
+			name: "lisa",
+			email: "lisa@emial.com",
+		},
+		level: "super",
+	}
+
+	ad.user.notify()
+
+	// 内部类型的方法也被提升到了外部类型
+	ad.notify()
+}
+```
+
+接口类型也会提升
+
+```
+package main
+
+import "fmt"
+
+type notifier interface {
+	notify()
+}
+
+type user struct {
+	name string
+	email string
+}
+
+func (u *user) notify() {
+	fmt.Printf("Sending user emial to %s<%s>\n", u.name, u.email)
+}
+
+type admin struct {
+	user
+	level string
+}
+
+func main() {
+	ad := admin{
+		user: user{
+			name: "lisa",
+			email: "lisa@emial.com",
+		},
+		level: "super",
+	}
+
+	// 给admin用户发送一个通知
+	// 用于实现接口的内部类型的方法 被提升到了外部类型
+	sendNotification(&ad)
+}
+
+func sendNotification(n notifier) {
+	n.notify()
+}
+```
+
+由于内部类型的提升，内部类型实现的接口会自动提升到外部类型，这意味着由于内部类型的实现，外部类型也同样实现了这个接口，**如果外部类型也想要有一套自己的实现，该怎么做呢？**
+
+```
+package main
+
+import "fmt"
+
+type notifier interface {
+	notify()
+}
+
+type user struct {
+	name string
+	email string
+}
+
+func (u *user) notify() {
+	fmt.Printf("Sending user emial to %s<%s>\n", u.name, u.email)
+}
+
+type admin struct {
+	user
+	level string
+}
+
+func (a *admin) notify() {
+	fmt.Printf("admin %s<%s>\n", a.name, a.email)
+}
+
+func main() {
+	ad := admin{
+		user: user{
+			name: "lisa",
+			email: "lisa@emial.com",
+		},
+		level: "super",
+	}
+
+	// 给admin用户发送一个通知
+	// 用于实现接口的内部类型的方法 被提升到了外部类型
+	sendNotification(&ad)
+
+	ad.user.notify()
+
+	ad.notify()
+}
+
+func sendNotification(n notifier) {
+	n.notify()
+}
+```
+
+**表明，如果外部类型实现了notify方法，内部类型的实现就不会被提升，不过内部类型的值一直存在，因此还可以通过直接访问内部类型的值来调用没有被提升的内部类型的方法**
+
+### 公开或未公开的标识符
+
+Go语言支持从包里公开或者隐藏标识符，通过这个功能，让用户能按照自己的规则控制标识符的可见性。
+
+当一个标识符的名字以小写字母开头时，这个标识符就是未公开的，即包外的代码不可见，如果一个标识符以大写字母开头，这个标志符就是公开的，即包外的代码是可见的
+
+```
+// ...
+package entities
+
+type User struct {
+	Name string
+	// email 小写 外包不能直接访问
+	email string
+}
+// ...
+package main
+
+import (
+	"fmt"
+	"./entities"
+)
+
+func main() {
+	u := entities.User{
+		Name: "Bill",
+		// email是非公开的字段，会报错
+		email: "bill@email.com",
+	}
+
+	fmt.Printf("%v", u)
+}
+```
+
+展示公开和未公开的内嵌类型是如何工作的
+
+```
+package entities
+
+type user struct {
+	Name string
+	Email string
+}
+
+type Admin struct {
+	user
+	Rights int
+}
+
+
+package main
+
+import (
+	"fmt"
+	"./entities"
+)
+
+func main() {
+	a := entities.Admin{
+		Rights: 10,
+	}
+
+	a.Name = "wingerwang"
+	a.Email = "wingerwang@qq.com"
+
+	fmt.Printf("User: %v", a)
+}
+```
+
+因为内部类型user是为公开的，内部类型里声明的字段依旧是公开的，既然内部类型的标识符提升到了外部类型，这些公开的字段也可以通过外部类型的字段的值来访问
+
+## 并发
+
