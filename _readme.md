@@ -934,3 +934,308 @@ func main() {
 
 ## 并发
 
+Go 语言里面的并发指的是能让某个函数独立于其他函数运行的能力。当一个函数创建为goroutine时，Go会将其视为一个独立的工作单元，这个单元会被调度到可用的逻辑处理器上执行。
+
+Go语言运行时的调度器是一个复杂的软件，能管理被创建的所有goroutine并为其分配执行时间，这个调度器是在操作系统之上，将操作系统的线程与语言运行时的逻辑处理器绑定，并在逻辑处理器上运行goroutine，调度器在任何给定的时间，都会全面控制哪个goroutine要在哪个逻辑处理器上运行
+
+Go语言的并发同步模型来自一个叫作**通信顺序进程(CSP)**的范型，CSP是一种消息传递模型，通过在goroutine之间传递数据来传递消息，而不是对数据进行加锁来实现同步访问。用于在goroutine之间同步和传递数据的关键数据类型叫做**channel 通道**
+
+### 并发与并行
+
+当运行一个应用程序的时候。操作系统会为这个应用程序启动一个进程，可以将这个进程看作一个包含了应用程序在运行中需要用到和维护的各种资源的容器
+
+一个线程是一个执行空间，这个空间会被操作系统调度来运行函数中所写的代码，每个进程至少包含一个线程，每个进程的初始线程被称为**主线程**。因为执行这个线程的空间是应用程序的本身的空间，所以当主线程终止时，应用程序也会终止。
+
+操作系统将线程调度到某个处理器上运行，这个处理器并不一定是进程所在的处理器。
+
+操作系统会在物理处理器上调度线程来运行，而Go语言的运行时会在逻辑处理器上调度goroutine来运行，每个逻辑处理器都分别绑定到单个操作系统线程
+
+有时，正在运行的goroutine需要执行一个阻塞的系统调用，如打开一个文件，当这类调用发生时，线程和goroutine会从逻辑处理器上分离，该线程会继续阻塞，等待系统调用的返回，于此同时，这个逻辑处理器就是去了原来运行的线程，所以 调度器会创建一个新的线程，并将其绑定到该逻辑处理器上，之后，调度器会从本地运行队列里选择一个goroutine来运行，一旦被阻塞的系统调用执行完成并返回，对应的gorountine会放回到本地运行队列，而之前的线程会保存好，以便后续使用
+
+![./3.png](图片)
+
+![./4.png](图片)
+
+![./5.png](图片)
+
+如果一个goroutine需要做一个网络I/O调用，流程上会有所不同，在这种情况下，goroutine会和逻辑处理器分离，并移植到集成了网络轮询器的运行时，一旦该轮询器指示某个网络读或者写就绪了，对应的goroutine就会重新分配到逻辑处理器上来完成操作
+
+调度器对可以创建的逻辑处理器的数量没有限制，但语言运行时默认限制每个程序最多创建10000个线程，这个值可以通过runtime/debug包的SetMaxThreds方法来更改
+
+并发不是并行，并行是**让不同的代码片段同时在不同的物理处理器上执行**。并行的关键是同时做很多事，而并发是指同时管理很多事情，这些事情可能只做到中间就去执行另外一个事情了。在很多情况下，并发比并行好，因为资源有限，符合“使用较少的资源做更多的事情”这个哲学
+
+让goroutine并行，需要多个逻辑处理器，当有多个逻辑处理器时，调度器会将goroutine平等分配到每个逻辑处理器上
+
+
+### goroutine
+
+```
+package main
+
+import (
+	"fmt"
+	"runtime"
+	"sync"
+)
+
+func main() {
+	// 分配一个逻辑处理器给调度器用
+	runtime.GOMAXPROCS(1)
+
+	// wg用来等待程序完成，计数加2，表示要等待两个goroutine
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	fmt.Println("Start Goroutines")
+
+	// 声明一个匿名函数，并创建一个goroutine
+	go func() {
+		// 在函数退出时调用Done来通知main函数工作已经完成
+		defer wg.Done()
+
+		for count := 0; count < 3; count++ {
+			for char := 'a'; char < 'a' + 26; char++ {
+				fmt.Printf("%c", char)
+			}
+		}
+	}()
+	
+	go func() {
+		// 在函数退出时调用Done来通知main函数工作已经完成
+		defer wg.Done()
+
+		for count := 0; count < 3; count++ {
+			for char := 'A'; char <'A' + 26; char++ {
+				fmt.Printf("%c", char)
+			}
+		}
+	}()
+
+	fmt.Println("Waiting to Finish")
+	wg.Wait()
+
+	fmt.Println("程序终止")
+}
+```
+
+一旦两个匿名函数创建goroutine来执行，main中的代码会继续运行，这意味着main函数会在goroutine完成工作之前返回，如果真的返回了，程序就会在goroutine有机会运行前终止 所以`wg.Wait()`起到了防止该现象发生的作用
+
+关键字defer会修改函数调用时机，在正在执行的函数返回时才真正调用defer声明的函数，所以我们使用关键字defer保证，每个goroutine一旦完成其工作就调用Done方法
+
+
+基于调度器的内部算法，一个正在运行的goroutine在工作结束前，可以背停止并重新调度，调度器这样做的目的就是为了防止某个goroutine长时间占用逻辑处理器，当goroutine占用时间过长时，调度器会停止当前正运行的goroutine，并给其他可以运行的goroutine运行的机会
+
+![./6.png](图片)
+
+只有在多个逻辑处理器且可以同时让每个goroutine运行在一个可用的物理处理器上的时候，goroutine才会并行运行
+
+### 竞争状态
+
+如果有两个或者多个goroutine在没有互相同步的情况下，访问某个共享的资源，并试图同时读和写这个资源，就处于相互竞争的状态，这种情况被称作竞争状态。
+
+对一个共享资源的读和写必须是原子化的，同一时刻只能有一个goroutine对共享资源进行读和写操作
+
+```
+package main
+
+import (
+	"fmt"
+	"runtime"
+	"sync"
+)
+
+var (
+	counter int
+	wg sync.WaitGroup
+)
+
+func main() {
+	wg.Add(2)
+
+	go incCounter(1)
+	go incCounter(2)
+
+	wg.Wait()
+	fmt.Println("Final Counter: ", counter) // Final Counter: 2
+}
+
+func incCounter(id int) {
+	defer wg.Done()
+
+	value := counter
+
+    // 当前goroutine退出线程，放回到队列中
+	runtime.Gosched()
+
+	value++
+
+	counter = value
+}
+```
+
+该代码的执行过程，如下图所示
+
+![./7.png](图片)
+
+GO语言有一个特别的工具，可以在代码里检测竞争状态
+
+```
+go build -race
+./example
+
+==================
+WARNING: DATA RACE
+Read at 0x0000011d7e78 by goroutine 7:
+  main.incCounter()
+      /Users/wangning/workplace/go_learn/charter6/listing9/listing9.go:27 +0x69
+
+Previous write at 0x0000011d7e78 by goroutine 6:
+  main.incCounter()
+      /Users/wangning/workplace/go_learn/charter6/listing9/listing9.go:33 +0x8a
+
+Goroutine 7 (running) created at:
+  main.main()
+      /Users/wangning/workplace/go_learn/charter6/listing9/listing9.go:18 +0x89
+
+Goroutine 6 (finished) created at:
+  main.main()
+      /Users/wangning/workplace/go_learn/charter6/listing9/listing9.go:17 +0x68
+==================
+
+```
+
+这种修正代码，消除竞争状态的办法是 使用Go语言提供的锁机制，来锁住共享资源，从而保证goroutine的同步状态
+
+### 锁住共享资源
+
+Go语言提供了传统的同步goroutine的机制，就是对共享资源加锁，如果需要顺序访问一个整型变量或者一段代码，atomic和sync包里的函数提供了很好的解决方案
+
+* 原子函数
+
+    原子函数能够以很底层的加锁机制来同步访问整型变量和指针。
+
+    atomic函数
+
+    ```
+    package main
+
+    import (
+        "fmt"
+        "runtime"
+        "sync"
+        "sync/atomic"
+    )
+
+    var (
+        counter int64
+        wg sync.WaitGroup
+    )
+
+    func main() {
+        wg.Add(2)
+        
+        go incCounter(1)
+        go incCounter(2)
+
+        wg.Wait()
+        fmt.Println("完成", counter) // 4
+    }
+
+    func incCounter(id int) {
+        defer wg.Done()
+
+        for count := 0; count < 2; count++ {
+            atomic.AddInt64(&counter, 1)
+            runtime.Gosched()
+        }
+    }
+    ```    
+
+* 互斥锁
+
+    另一种同步访问共享资源的方式就是使用互斥锁（mutex),互斥锁这个名字来自互斥的概念。互斥锁用于在代码上创建一个临界区,保证同一时间只用一个goroutine可以执行这个临界区代码
+
+    ```
+    package main
+
+    import (
+        "fmt"
+        "runtime"
+        "sync"
+    )
+
+    var (
+        counter int
+        wg sync.WaitGroup
+        mutex sync.Mutex
+    )
+
+    func main() {
+        wg.Add(2)
+        go incCounter(1)
+        go incCounter(2)
+        wg.Wait()
+        fmt.Println("完成", counter)
+    }
+
+    func incCounter(id int) {
+        defer wg.Done()
+
+        for count := 0; count < 2; count++ {
+            mutex.Lock() 
+            {
+                value := counter
+                runtime.Gosched()
+                value++
+                counter = value
+            }
+            mutex.Unlock()
+        }
+    }
+    ```
+
+### 通道
+
+原子操作和互斥锁都能工作，但是依靠它们都不会让他们编写并发程序变得更简单，更不容易出错，或者更有趣，在Go语言里，你可以使用通道，通过发送和接受不了需要共享的资源，在goroutine之间做同步
+
+当一个资源需要在goroutine之间共享时，通道在goroutine之间架起了一个管道，并提供了确保同步交换数据结构的机制
+
+声明通道时，需要指定将要被共享的数据的类型，可以通过通道共享内置类型、命名类型、结构类型和引用类型的值或者指针
+
+使用内置函数make来创建一个通道
+
+```
+// 无缓冲的
+unbuffered := make(chan int)
+// 有缓冲的
+buffered := make(chan string, 10)
+```
+
+向通道发送值或者指针需要用到<- 操作符
+
+```
+buffered := make(chan string, 10)
+
+buffered <- "winger"
+```
+
+为了让另一个goroutine可以从该通道里接收到这个字符串，我们依旧使用<-操作符，但这次是一元运算符
+
+```
+value := <-buffered
+```
+
+* 无缓冲的通道
+
+无缓冲的通道是指在接收前没有能力保存任何值的通道，这种类型的通道要求发送goroutine和接收goroutine同时准备好，才能完成发送和接收操作，如果双方没有同时准备好，会导致先执行发送或接收操作的goroutine阻塞等待
+
+![./8.png](图片)
+
+
+* 有缓冲的通道
+
+有缓冲的通道是一种在被接收前能被存储一个或者多个值的通道，这种类型的通道并不强制要求goroutine之间必须同时完成发送和接收，通常会阻塞发送和接收动作的条件不同。只有在通道中没有要接收的值时，接收动作才会阻塞，只有在通道没有可用缓冲区容纳被发送的值时，发送动作才会阻塞
+
+无缓冲的通道保证进行发送和接收的goroutine会在同一时间进行数据交换，有缓冲的通道没有这种保证
+
