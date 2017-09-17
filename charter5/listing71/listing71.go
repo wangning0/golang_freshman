@@ -8,8 +8,7 @@ import (
 func main() {
 	u := entities.User{
 		Name: "Bill",
-		// charter5/listing71/listing71.go:11:8: unknown field 'email' i
-// n struct literal of type entities.User
+		// email是非公开的字段，会报错
 		email: "bill@email.com",
 	}
 

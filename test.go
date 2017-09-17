@@ -1,11 +1,19 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"runtime"
+)
+
+func say(s string) {
+	for i := 0; i < 5; i++ {
+		runtime.Gosched()
+		fmt.Println(s)
+	}
+}
 
 func main() {
-	type Duration int64
-	
-	var dur Duration
-	dur = int64(100)
-	fmt.Println(dur)
+	go say("world") // 开一个新的Goroutines执行
+	go say("hello") // 当前Goroutines执行
+
 }
