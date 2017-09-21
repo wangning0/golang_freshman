@@ -2,12 +2,11 @@ package main
 
 import (
 	"fmt"
-	"os"
+	// "bytes"
 )
 
 func main() {
-	pid := os.Getpid()
-	ppid := os.Getppid()
-
-	fmt.Println(pid, ppid)
+	readBytes := make([]byte, 2)
+	bs := []byte{1, 2, 3}
+	fmt.Println(readBytes, bs)
 }
